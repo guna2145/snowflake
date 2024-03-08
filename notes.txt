@@ -1,0 +1,7 @@
+1. List Stage from Snowflake
+    created a funtion to get list the stages
+2. Select the file from list
+    creating a function to 
+3. Preview the selected file from the list
+4. Select a column profile the data
+5. Select rows and ingest the data
