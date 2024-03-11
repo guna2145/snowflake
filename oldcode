@@ -1,0 +1,9 @@
+'''
+date_format = st.radio("Select Date",["DATE RANGE","MULTISELECT"], horizontal=True, label_visibility="collapsed")
+    if date_format == 'DATE RANGE':
+        col1, col2 = st.columns(2)
+        col1.date_input("START DATE")
+        col2.date_input("END DATE")
+    else:
+        st.multiselect("SELECT DATE",[str(i['created_on']).split(' ')[0] for i in df])
+'''

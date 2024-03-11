@@ -1,5 +1,7 @@
 
 import snowflake.snowpark.functions
+import datetime
+import re
 import pandas as pd
 from snowflake.snowpark import Session
 from snowflake.snowpark.functions import col
@@ -24,7 +26,7 @@ session = Session.builder.configs(connection_parameters).create()
 #Streamlit App Title
 
 st.set_page_config(layout="wide")
-st.title("Data Management Application")
+st.title("\t\tData Management Application")
 
 #Get Current Snowflake details
 #print(session.sql("select current_warehouse(), current_database(), current_schema()").collect())
@@ -64,14 +66,6 @@ def list_stage():
             stage_name.append(stage['name'])
 
     stage_name = st.selectbox("SELECT STAGE", stage_name)
-    date_format = st.radio("Select Date",["DATE RANGE","MULTISELECT"], horizontal=True, label_visibility="collapsed")
-
-    if date_format == 'DATE RANGE':
-        col1, col2 = st.columns(2)
-        col1.date_input("START DATE")
-        col2.date_input("END DATE")
-    else:
-        st.multiselect("SELECT DATE",[str(i['created_on']).split(' ')[0] for i in df])
 
     if stage_name:
         file_list = pd.DataFrame(session.sql(f"LIST @{stage_name}").collect())
@@ -92,38 +86,33 @@ def list_stage():
         selected_rows = edited_df[edited_df.Select]
         filename = selected_rows['name'].to_string().split("/")[-1]
 
-    if button("Preview/Reset",key="preview",use_container_width=True):
-        #switch_page("data_validation")
-        #preview = pd.DataFrame(session.sql('select * from people limit 100').collect())
-        #preview = pd.DataFrame(session.file.get_stream("@MANAGE_DB.EXTERNAL_STAGES.HACKATHON_GUNA_S3/people-1000.csv", decompress=False))
-        # Read a csv file with header and parse the header
+    if button("Preview & Reset",key="preview",use_container_width=True):
+        load_start = datetime.datetime.now()
         df_file = pd.DataFrame(session.read.option("INFER_SCHEMA", True).option("PARSE_HEADER", True).csv(f"@{stage_name}/{filename}").collect())
-        
-
+        load_end = datetime.datetime.now()
+        st.info(f"Dataframe Loading Time:{load_end-load_start}")
         df_file_selections = df_file.copy()
         df_file_selections.insert(0, "Select", init_value)
 
         # Get dataframe row-selections from user with st.data_editor
-
-
-        edited1_df = st.data_editor(
+        edited_df_view = st.data_editor(
             df_file_selections,
             hide_index=True,
             column_config={"Select": st.column_config.CheckboxColumn(required=True)},
-            disabled=df_file.columns,
+            disabled=False,
             width=2000,
-            key='edited1_df'
+            key='edited_df_view'
         )
 
-        if button("Edit Data",key="editData",use_container_width=True):
-            st.write(st.session_state.edited1_df)
-        if button("Ingest Data",key="ingestdata",use_container_width=True):
-            st.write("test")
+        st.warning("\tDouble click a cell to edit the data and click 'Ingest Data' to ingest to the DB. Please note the change will not be saved to the actual file in Amazon S3",icon="🚨")
 
- 
-        selected_rows_data = edited1_df[edited1_df.Select]
-        print(selected_rows_data)
-
+        if st.button("Ingest Data",key="ingestdata",use_container_width=True):
+            table_name_split = filename.split(".")[0]
+            table_name = re.sub(r"[^a-zA-Z0-9 ]", "_", table_name_split)
+            selected_data = session.create_dataframe(edited_df_view[edited_df_view.Select])
+            selected_data.write.mode("append").save_as_table(table_name)
+            st.info(f"Below records are ingested to the Database {table_name.upper()}")
+            st.table(selected_data)
         #filtered_df = dataframe_explorer(edited1_df, case=False)
 
         #st.dataframe(edited1_df, use_container_width=True)
