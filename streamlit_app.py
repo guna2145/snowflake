@@ -1,6 +1,7 @@
 
 import snowflake.snowpark.functions
 import datetime
+import time
 import re
 import pandas as pd
 from snowflake.snowpark import Session
@@ -9,13 +10,15 @@ import streamlit as st
 from streamlit_extras.stateful_button import button
 from streamlit_extras.switch_page_button import switch_page
 from streamlit_extras.dataframe_explorer import dataframe_explorer
+from streamlit_pandas_profiling import st_profile_report
+from ydata_profiling import ProfileReport
 
 
-connection_parameters = {"account":"qgonqbx-ju39310",
-"user":"GUNA2145",
-"password": "jyzqup-suwcig-0Wujma",
+connection_parameters = {"account":"XXXXXX",
+"user":"XXXXXXX",
+"password": "XXXXXXXXX",
 "role":"ACCOUNTADMIN",
-"warehouse":"COMPUTE_WH",
+"warehouse":"XXXXXX",
 "database":"MANAGE_DB",
 "schema":"EXTERNAL_STAGES"
 }
@@ -88,15 +91,22 @@ def list_stage():
 
     if button("Preview & Reset",key="preview",use_container_width=True):
         load_start = datetime.datetime.now()
-        df_file = pd.DataFrame(session.read.option("INFER_SCHEMA", True).option("PARSE_HEADER", True).csv(f"@{stage_name}/{filename}").collect())
+
+        with st.spinner('Loading the dataframe, please wait....'):
+            df_file = pd.DataFrame(session.read.option("INFER_SCHEMA", True).option("PARSE_HEADER", True).csv(f"@{stage_name}/{filename}").collect())
         load_end = datetime.datetime.now()
-        st.info(f"Dataframe Loading Time:{load_end-load_start}")
+        st.success(f"Dataframe Load Time : {load_end-load_start}")
+       
         df_file_selections = df_file.copy()
         df_file_selections.insert(0, "Select", init_value)
 
+    
+        #Dataframe_explorer code for Filtering the Dataframe
+
+
         # Get dataframe row-selections from user with st.data_editor
         edited_df_view = st.data_editor(
-            df_file_selections,
+            dataframe_explorer(df_file_selections),
             hide_index=True,
             column_config={"Select": st.column_config.CheckboxColumn(required=True)},
             disabled=False,
@@ -113,8 +123,10 @@ def list_stage():
             selected_data.write.mode("append").save_as_table(table_name)
             st.info(f"Below records are ingested to the Database {table_name.upper()}")
             st.table(selected_data)
-        #filtered_df = dataframe_explorer(edited1_df, case=False)
 
-        #st.dataframe(edited1_df, use_container_width=True)
+        with st.expander("Data Profiling"):
+            profie_data_pr = pd.read_csv("people-1000.csv")
+            pr = ProfileReport(profie_data_pr, title="Report",dark_mode=True)
+            st_profile_report(pr)
 
 list_stage()
