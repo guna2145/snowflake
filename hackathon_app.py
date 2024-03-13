@@ -74,9 +74,10 @@ if st.session_state.get('file_name'):
         df_file = pd.DataFrame(session.read.option("INFER_SCHEMA", True).option("PARSE_HEADER", True).csv(f"@{stage_name}/{filename}").collect())
         gd = GridOptionsBuilder.from_dataframe(df_file)
         gd.configure_default_column(editable=True)
-        gd.configure_pagination(enabled=True, paginationAutoPageSize=False, paginationPageSize=100)
+        gd.configure_pagination(enabled=True, paginationAutoPageSize=False, paginationPageSize=30)
         gd.configure_selection(selection_mode='multiple', use_checkbox=True)
         gd.configure_grid_options(pre_selected_rows=[])
+        gd.configure_column("Index", headerCheckboxSelection = True)
         gridoptions = gd.build()
 
         return_value = AgGrid(
@@ -102,12 +103,12 @@ if st.session_state.get('file_name'):
         col1, col2 = st.columns(2)
         with col1:
             options = st.multiselect(
-                label="",
+                label="Please choose the columns..",
                 options=df_file.columns.values,
                 on_change = None,
-                placeholder = "Please choose the columns..")
+                placeholder = "Please choose the columns..", 
+                label_visibility="hidden")
             if options:
-                wt.write(options)
                 profie_data = df_file.copy()
                 profie_data = profie_data[options]
                 pr = profie_data.profile_report()
